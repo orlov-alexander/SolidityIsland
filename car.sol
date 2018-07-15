@@ -2,14 +2,10 @@ pragma solidity ^0.4.24;
 // pragma experimental ABIEncoderV2;
 
 contract Crutch {
-    function onERC721Received(address, address, uint32) {}
+    function onERC721Received(address, address, uint32, bytes) returns (bytes4);
 }
 
 contract CarContract {
-    constructor(string name) {
-        Crutch crutch = Crutch("crutch_name");
-        NameReg(crutch.lookup(1)).register(name);
-    }
     
     struct Car {
         uint32 token_id;
@@ -18,11 +14,11 @@ contract CarContract {
         string engine;
         string reg_number;
     }
-    /// vin = token_id
     mapping(uint32 => Car) cars;
     mapping(uint32 => address) ownerOf;
 
     uint32 public total_cars = 0;
+    bytes4 private constant magic = 0x150b7a02;
     
     event Transfer(address from, address to, uint32 token_id);
     
@@ -81,28 +77,14 @@ contract CarContract {
         return (size > 0);
     }
     
-    /// @notice Transfers the ownership of an NFT from one address to another address
-    /// @dev Throws unless `msg.sender` is the current owner, an authorized
-    ///  operator, or the approved address for this NFT. Throws if `_from` is
-    ///  not the current owner. Throws if `_to` is the zero address. Throws if
-    ///  `_tokenId` is not a valid NFT. When transfer is complete, this function
-    ///  checks if `_to` is a smart contract (code size > 0). If so, it calls
-    ///  `onERC721Received` on `_to` and throws if the return value is not
-    ///  `bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"))`.
-    /// @param _from The current owner of the NFT
-    /// @param _to The new owner
-    /// @param _token_id The NFT to transfer
     function safeTransferFrom(address _from, address _to, 
                               uint32 _token_id) external payable{
         require(_from == msg.sender);
         require(_to != address(0));
         transfer(_to, _token_id);
-        Crutch crutch = Crutch("crutch_kek");
         if (isContract(_to)) {
-            magic = crutch.onERC721Received(_from, _to, _token_id);
-            if (!bytes4(keccak256(magic))) {
-                revert;
-            }
+            bytes4 value = Crutch(_to).onERC721Received(_from, _to, _token_id, "");
+            require(bytes4(keccak256(value)) != magic);
         }
     }
 }
